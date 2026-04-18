@@ -115,10 +115,18 @@ TOOLS = {
             "checks":      "Error, Boolean, Time-based",
             "status":      "ready",
         },
+        {
+            "id":          2,
+            "name":        "NoSQL Injector",
+            "file":        "web/nosql_injector.py",
+            "description": "Test MongoDB, Firebase, CouchDB injection",
+            "checks":      "Operator, Auth Bypass, Firebase",
+            "status":      "ready",
+        },
     ],
     "Recon": [
         {
-            "id":          2,
+            "id":          3,
             "name":        "Subdomain Enumerator",
             "file":        "recon/subdomain_enum.py",
             "description": "Discover subdomains of a target domain",
@@ -128,7 +136,7 @@ TOOLS = {
     ],
     "Scanning": [
         {
-            "id":          3,
+            "id":          4,
             "name":        "Port Scanner",
             "file":        "scanning/port_scanner.py",
             "description": "Scan open ports and detect services",
@@ -138,7 +146,7 @@ TOOLS = {
     ],
     "Reporting": [
         {
-            "id":          4,
+            "id":          5,
             "name":        "Report Generator",
             "file":        "reporting/report_generator.py",
             "description": "Generate a PDF report from scan findings",
@@ -282,12 +290,65 @@ def launch_sqli():
     p(f"  Type {cyan('use 1')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_nosql():
+    p()
+    header("TOOL 2 - NoSQL INJECTOR")
+    p()
+    p(f"  {dim('Tests MongoDB, Firebase and CouchDB for injection vulnerabilities.')}")
+    p(f"  {dim('Works on APIs and apps using NoSQL databases.')}")
+    p()
+
+    p(f"  {white('Step 1 of 3')} - Enter the target URL")
+    p(f"  {dim('Example: https://site.com/api/users?id=1')}")
+    url = ask("URL >")
+    if not url.strip():
+        p(f"\n  {red('No URL entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 3')} - Choose check type")
+    p(f"  {dim('all      = run all checks (recommended)')}")
+    p(f"  {dim('get      = test URL parameters only')}")
+    p(f"  {dim('post     = test JSON login/search endpoints')}")
+    p(f"  {dim('firebase = test Firebase REST endpoints')}")
+    checks = ask("Check type [all] >") or "all"
+
+    p()
+    p(f"  {white('Step 3 of 3')} - Authentication {dim('(Enter to skip)')}")
+    cookie = ask("Cookie  >")
+    header_val = ask("Header  >")
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "web/nosql_injector.py", "-u", url.strip(), "--checks"] + checks.split()
+    if cookie:     cmd += ["-c", cookie]
+    if header_val: cmd += ["-H", header_val]
+    if output:     cmd += ["-o", output]
+
+    p()
+    line()
+    p(f"  {red('Target acquired - running NoSQL scan...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Strike complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 2')} to scan again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
         return
     if tool["id"] == 1:
         launch_sqli()
+    elif tool["id"] == 2:
+        launch_nosql()
 
 def find_tool(query):
     q = query.strip().lower()
