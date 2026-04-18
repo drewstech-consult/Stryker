@@ -123,10 +123,18 @@ TOOLS = {
             "checks":      "Operator, Auth Bypass, Firebase",
             "status":      "ready",
         },
+        {
+            "id":          3,
+            "name":        "XSS Scanner",
+            "file":        "web/xss_scanner.py",
+            "description": "Detect cross-site scripting vulnerabilities",
+            "checks":      "Reflected, DOM, Forms, Headers",
+            "status":      "ready",
+        },
     ],
     "Recon": [
         {
-            "id":          3,
+            "id":          4,
             "name":        "Subdomain Enumerator",
             "file":        "recon/subdomain_enum.py",
             "description": "Discover subdomains of a target domain",
@@ -136,7 +144,7 @@ TOOLS = {
     ],
     "Scanning": [
         {
-            "id":          4,
+            "id":          5,
             "name":        "Port Scanner",
             "file":        "scanning/port_scanner.py",
             "description": "Scan open ports and detect services",
@@ -146,7 +154,7 @@ TOOLS = {
     ],
     "Reporting": [
         {
-            "id":          5,
+            "id":          6,
             "name":        "Report Generator",
             "file":        "reporting/report_generator.py",
             "description": "Generate a PDF report from scan findings",
@@ -341,6 +349,58 @@ def launch_nosql():
     p(f"  Type {cyan('use 2')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_xss():
+    p()
+    header("TOOL 3 - XSS SCANNER")
+    p()
+    p(f"  {dim('Scans for Cross-Site Scripting vulnerabilities.')}")
+    p(f"  {dim('Tests reflected XSS, DOM sinks, form inputs and security headers.')}")
+    p()
+
+    p(f"  {white('Step 1 of 3')} - Enter the target URL")
+    p(f"  {dim('Example: https://site.com/search?q=hello')}")
+    url = ask("URL >")
+    if not url.strip():
+        p(f"\n  {red('No URL entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 3')} - Choose check type")
+    p(f"  {dim('all       = run all checks (recommended)')}")
+    p(f"  {dim('reflected = test URL parameters for reflected XSS')}")
+    p(f"  {dim('forms     = test form inputs')}")
+    p(f"  {dim('dom       = check for dangerous DOM sinks')}")
+    p(f"  {dim('headers   = check for missing security headers')}")
+    checks = ask("Check type [all] >") or "all"
+
+    p()
+    p(f"  {white('Step 3 of 3')} - Authentication {dim('(Enter to skip)')}")
+    cookie = ask("Cookie  >")
+    header_val = ask("Header  >")
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "web/xss_scanner.py", "-u", url.strip(), "--checks"] + checks.split()
+    if cookie:     cmd += ["-c", cookie]
+    if header_val: cmd += ["-H", header_val]
+    if output:     cmd += ["-o", output]
+
+    p()
+    line()
+    p(f"  {red('Target acquired - running XSS scan...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Strike complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 3')} to scan again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -349,6 +409,8 @@ def launch_tool(tool):
         launch_sqli()
     elif tool["id"] == 2:
         launch_nosql()
+    elif tool["id"] == 3:
+        launch_xss()
 
 def find_tool(query):
     q = query.strip().lower()
