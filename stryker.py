@@ -173,9 +173,9 @@ TOOLS = {
             "id":          8,
             "name":        "Report Generator",
             "file":        "reporting/report_generator.py",
-            "description": "Generate a PDF report from scan findings",
-            "checks":      "PDF / HTML output",
-            "status":      "coming",
+            "description": "Generate professional PDF pentest reports",
+            "checks":      "Cover, Findings, Remediation Table",
+            "status":      "ready",
         },
     ],
 }
@@ -633,6 +633,59 @@ def launch_portscan():
     p(f"  Type {cyan('use 7')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_report():
+    p()
+    header("TOOL 8 - REPORT GENERATOR")
+    p()
+    p(f"  {dim('Generates a professional PDF pentest report.')}")
+    p(f"  {dim('Includes cover page, executive summary, findings and remediation table.')}")
+    p()
+    p(f"  {white('Option A')} - Generate a sample report {dim('(no findings file needed)')}")
+    p(f"  {white('Option B')} - Generate from your own findings JSON file")
+    p()
+
+    p(f"  {white('Step 1 of 3')} - Client / target name")
+    p(f"  {dim('Example: Acme Corp or PrymeBay')}")
+    target = ask("Target name >") or "Target Organization"
+
+    p()
+    p(f"  {white('Step 2 of 3')} - Findings file {dim('(optional)')}")
+    p(f"  {dim('Path to a JSON file with your findings.')}")
+    p(f"  {dim('Press Enter to generate a sample report instead.')}")
+    findings_file = ask("Findings JSON file >")
+
+    p()
+    p(f"  {white('Step 3 of 3')} - Output filename")
+    output = ask("Output file [report.pdf] >") or "report.pdf"
+    if not output.endswith(".pdf"):
+        output += ".pdf"
+
+    cmd = [sys.executable, "reporting/report_generator.py",
+           "-t", target.strip(),
+           "-o", output.strip()]
+
+    if findings_file.strip():
+        cmd += ["-f", findings_file.strip()]
+    else:
+        cmd.append("--sample")
+        p(f"\n  {dim('No findings file — generating sample report...')}\n")
+
+    p()
+    line()
+    p(f"  {red('Generating PDF report...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Report complete.')}")
+    line()
+    p()
+    p(f"  {dim('Open')} {cyan(output)} {dim('with any PDF viewer.')}")
+    p(f"  Type {cyan('use 8')} to generate another or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -651,6 +704,8 @@ def launch_tool(tool):
         launch_subdomain()
     elif tool["id"] == 7:
         launch_portscan()
+    elif tool["id"] == 8:
+        launch_report()
 
 def find_tool(query):
     q = query.strip().lower()
