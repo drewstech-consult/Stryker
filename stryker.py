@@ -195,6 +195,14 @@ TOOLS = {
             "checks":      "Arbitrary origin, Wildcard, Null, Credentials",
             "status":      "ready",
         },
+        {
+            "id":          11,
+            "name":        "Session Hijacker",
+            "file":        "post_exploit/session_hijacker.py",
+            "description": "Test session token & cookie security",
+            "checks":      "Cookie flags, Token reuse, Logout invalidation",
+            "status":      "ready",
+        },
     ],
 }
 
@@ -836,6 +844,79 @@ def launch_cors():
     p(f"  Type {cyan('use 10')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_session():
+    p()
+    header("TOOL 11 - SESSION HIJACKER TESTER")
+    p()
+    p(f"  {dim('Tests session tokens and cookies for security weaknesses.')}")
+    p(f"  {dim('Checks cookie flags, token reuse, and logout invalidation.')}")
+    p()
+    p(f"  {white('Choose mode:')}")
+    p(f"  {dim('1 = Cookie analysis only  (no token needed)')}")
+    p(f"  {dim('2 = Full session test      (requires your token)')}")
+    p()
+    mode = ask("Mode [1/2] >").strip() or "1"
+
+    p()
+    p(f"  {white('Target URL')}")
+    p(f"  {dim('Example: https://www.prymebay.com')}")
+    url = ask("URL >")
+    if not url.strip():
+        p(f"\n  {red('No URL entered. Going back.')}\n")
+        return
+
+    cmd = [sys.executable, "post_exploit/session_hijacker.py", "-u", url.strip()]
+
+    if mode == "1":
+        cmd.append("--cookies-only")
+
+    else:
+        p()
+        p(f"  {white('Session token')}")
+        p(f"  {dim('Paste your JWT, session cookie value or auth token')}")
+        token = ask("Token >")
+        if not token.strip():
+            p(f"\n  {red('No token entered. Going back.')}\n")
+            return
+
+        p()
+        p(f"  {dim('How is the token sent?')}")
+        p(f"  {dim('cookie = sent as a cookie (most common)')}")
+        p(f"  {dim('bearer = sent as Authorization: Bearer header')}")
+        p(f"  {dim('header = sent as a custom header')}")
+        token_type = ask("Token type [cookie/bearer/header] >").strip() or "cookie"
+
+        p()
+        token_name = ask("Cookie/header name [session] >").strip() or "session"
+
+        p()
+        p(f"  {dim('Logout endpoint? Used to test if token is invalidated after logout.')}")
+        p(f"  {dim('Example: /api/logout or /auth/signout  (Enter to skip)')}")
+        logout = ask("Logout path >").strip()
+
+        cmd += ["-t", token.strip(), "--type", token_type, "-n", token_name]
+        if logout:
+            cmd += ["--logout", logout]
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+    if output.strip(): cmd += ["-o", output.strip()]
+
+    p()
+    line()
+    p(f"  {red('Testing session security...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Test complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 11')} to test again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -860,6 +941,8 @@ def launch_tool(tool):
         launch_secrets()
     elif tool["id"] == 10:
         launch_cors()
+    elif tool["id"] == 11:
+        launch_session()
 
 def find_tool(query):
     q = query.strip().lower()
