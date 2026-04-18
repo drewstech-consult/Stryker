@@ -131,10 +131,18 @@ TOOLS = {
             "checks":      "Reflected, DOM, Forms, Headers",
             "status":      "ready",
         },
+        {
+            "id":          4,
+            "name":        "Firebase Auditor",
+            "file":        "web/firebase_auditor.py",
+            "description": "Audit Firebase security rules & config",
+            "checks":      "Firestore, RTDB, Storage, Auth, Config",
+            "status":      "ready",
+        },
     ],
     "Recon": [
         {
-            "id":          4,
+            "id":          5,
             "name":        "Subdomain Enumerator",
             "file":        "recon/subdomain_enum.py",
             "description": "Discover subdomains of a target domain",
@@ -144,7 +152,7 @@ TOOLS = {
     ],
     "Scanning": [
         {
-            "id":          5,
+            "id":          6,
             "name":        "Port Scanner",
             "file":        "scanning/port_scanner.py",
             "description": "Scan open ports and detect services",
@@ -154,7 +162,7 @@ TOOLS = {
     ],
     "Reporting": [
         {
-            "id":          6,
+            "id":          7,
             "name":        "Report Generator",
             "file":        "reporting/report_generator.py",
             "description": "Generate a PDF report from scan findings",
@@ -401,6 +409,60 @@ def launch_xss():
     p(f"  Type {cyan('use 3')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_firebase():
+    p()
+    header("TOOL 4 - FIREBASE AUDITOR")
+    p()
+    p(f"  {dim('Audits Firebase project for security misconfigurations.')}")
+    p(f"  {dim('Checks Firestore, Realtime DB, Storage, Auth and exposed config.')}")
+    p()
+
+    p(f"  {white('Step 1 of 2')} - Enter your Firebase Project ID")
+    p(f"  {dim('Find it in Firebase Console -> Project Settings')}")
+    p(f"  {dim('Example: my-app-12345')}")
+    p(f"  {dim('Or enter your app URL and it will extract the ID:')}")
+    p(f"  {dim('Example: https://myapp.web.app')}")
+    target = ask("Project ID or URL >")
+    if not target.strip():
+        p(f"\n  {red('No input. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 2')} - Choose checks")
+    p(f"  {dim('all       = run all checks (recommended)')}")
+    p(f"  {dim('firestore = check Firestore rules')}")
+    p(f"  {dim('rtdb      = check Realtime Database rules')}")
+    p(f"  {dim('storage   = check Storage bucket rules')}")
+    p(f"  {dim('config    = check for exposed API keys in page source')}")
+    p(f"  {dim('auth      = check Auth configuration')}")
+    checks = ask("Check type [all] >") or "all"
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    # Determine if input is URL or project ID
+    if target.strip().startswith("http"):
+        cmd = [sys.executable, "web/firebase_auditor.py", "-u", target.strip(), "--checks"] + checks.split()
+    else:
+        cmd = [sys.executable, "web/firebase_auditor.py", "-p", target.strip(), "--checks"] + checks.split()
+
+    if output: cmd += ["-o", output]
+
+    p()
+    line()
+    p(f"  {red('Target acquired - auditing Firebase project...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Audit complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 4')} to audit again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -411,6 +473,8 @@ def launch_tool(tool):
         launch_nosql()
     elif tool["id"] == 3:
         launch_xss()
+    elif tool["id"] == 4:
+        launch_firebase()
 
 def find_tool(query):
     q = query.strip().lower()
