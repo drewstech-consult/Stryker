@@ -154,8 +154,8 @@ TOOLS = {
             "name":        "Subdomain Enumerator",
             "file":        "recon/subdomain_enum.py",
             "description": "Discover subdomains of a target domain",
-            "checks":      "DNS wordlist brute-force",
-            "status":      "coming",
+            "checks":      "DNS brute-force + crt.sh",
+            "status":      "ready",
         },
     ],
     "Scanning": [
@@ -164,8 +164,8 @@ TOOLS = {
             "name":        "Port Scanner",
             "file":        "scanning/port_scanner.py",
             "description": "Scan open ports and detect services",
-            "checks":      "TCP / UDP / Banner grab",
-            "status":      "coming",
+            "checks":      "TCP / Banner grab / Risk rating",
+            "status":      "ready",
         },
     ],
     "Reporting": [
@@ -580,6 +580,59 @@ def launch_subdomain():
     p(f"  Type {cyan('use 6')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_portscan():
+    p()
+    header("TOOL 7 - PORT SCANNER")
+    p()
+    p(f"  {dim('Scans open ports, grabs service banners and rates risk.')}")
+    p(f"  {dim('Finds exposed databases, dev servers and dangerous services.')}")
+    p()
+
+    p(f"  {white('Step 1 of 2')} - Enter the target host")
+    p(f"  {dim('Example: prymebay.com or 192.168.1.1')}")
+    p(f"  {dim('Do NOT include https:// or paths')}")
+    target = ask("Host >")
+    if not target.strip():
+        p(f"\n  {red('No host entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 2')} - Choose port set")
+    p(f"  {dim('common   = 50 well-known ports (default, recommended)')}")
+    p(f"  {dim('web      = HTTP/HTTPS ports only')}")
+    p(f"  {dim('database = Database ports only')}")
+    p(f"  {dim('dev      = Development server ports')}")
+    p(f"  {dim('top100   = All ports 1-1024 (slower)')}")
+    p(f"  {dim('custom   = Enter specific ports e.g: 80,443,3306')}")
+    port_choice = ask("Port set [common] >") or "common"
+
+    p()
+    threads = ask("Threads [50] >") or "50"
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "scanning/port_scanner.py",
+           "-t", target.strip(),
+           "--ports", port_choice.strip(),
+           "--threads", threads.strip()]
+    if output: cmd += ["-o", output]
+
+    p()
+    line()
+    p(f"  {red('Target acquired - scanning ports...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Scan complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 7')} to scan again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -596,6 +649,8 @@ def launch_tool(tool):
         launch_jwt()
     elif tool["id"] == 6:
         launch_subdomain()
+    elif tool["id"] == 7:
+        launch_portscan()
 
 def find_tool(query):
     q = query.strip().lower()
