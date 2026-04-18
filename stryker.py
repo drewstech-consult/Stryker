@@ -187,6 +187,14 @@ TOOLS = {
             "checks":      "GitHub repos, URLs, local paths",
             "status":      "ready",
         },
+        {
+            "id":          10,
+            "name":        "CORS Exploiter",
+            "file":        "post_exploit/cors_exploiter.py",
+            "description": "Test CORS misconfigurations & generate PoC exploits",
+            "checks":      "Arbitrary origin, Wildcard, Null, Credentials",
+            "status":      "ready",
+        },
     ],
 }
 
@@ -774,6 +782,60 @@ def launch_secrets():
     p(f"  Type {cyan('use 9')} to scan again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_cors():
+    p()
+    header("TOOL 10 - CORS EXPLOITER")
+    p()
+    p(f"  {dim('Tests for Cross-Origin Resource Sharing misconfigurations.')}")
+    p(f"  {dim('Finds issues that let attackers steal data from logged-in users.')}")
+    p()
+
+    p(f"  {white('Step 1 of 3')} - Enter the target URL")
+    p(f"  {dim('Best on API endpoints: https://api.site.com or https://site.com/api')}")
+    url = ask("URL >")
+    if not url.strip():
+        p(f"\n  {red('No URL entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 3')} - Options")
+    p(f"  {dim('Test common API endpoints? (/api/user, /api/orders etc.)')}")
+    endpoints = ask("Test API endpoints? [y/n] >").strip().lower()
+
+    p()
+    p(f"  {dim('Generate JavaScript PoC exploit for findings?')}")
+    poc = ask("Generate PoC? [y/n] >").strip().lower()
+
+    p()
+    p(f"  {white('Step 3 of 3')} - Authentication {dim('(Enter to skip)')}")
+    cookie = ask("Cookie  >")
+    header_val = ask("Header  >")
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "post_exploit/cors_exploiter.py", "-u", url.strip()]
+    if endpoints in ("y", "yes"): cmd.append("--endpoints")
+    if poc in ("y", "yes"):       cmd.append("--poc")
+    if cookie.strip():            cmd += ["-c", cookie.strip()]
+    if header_val.strip():        cmd += ["-H", header_val.strip()]
+    if output.strip():            cmd += ["-o", output.strip()]
+
+    p()
+    line()
+    p(f"  {red('Target acquired - testing CORS policies...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Scan complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 10')} to scan again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -796,6 +858,8 @@ def launch_tool(tool):
         launch_report()
     elif tool["id"] == 9:
         launch_secrets()
+    elif tool["id"] == 10:
+        launch_cors()
 
 def find_tool(query):
     q = query.strip().lower()
