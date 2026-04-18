@@ -139,10 +139,18 @@ TOOLS = {
             "checks":      "Firestore, RTDB, Storage, Auth, Config",
             "status":      "ready",
         },
+        {
+            "id":          5,
+            "name":        "JWT Analyzer",
+            "file":        "web/jwt_analyzer.py",
+            "description": "Decode and test JWT token security",
+            "checks":      "Algorithm, Expiry, Secrets, Endpoint",
+            "status":      "ready",
+        },
     ],
     "Recon": [
         {
-            "id":          5,
+            "id":          6,
             "name":        "Subdomain Enumerator",
             "file":        "recon/subdomain_enum.py",
             "description": "Discover subdomains of a target domain",
@@ -152,7 +160,7 @@ TOOLS = {
     ],
     "Scanning": [
         {
-            "id":          6,
+            "id":          7,
             "name":        "Port Scanner",
             "file":        "scanning/port_scanner.py",
             "description": "Scan open ports and detect services",
@@ -162,7 +170,7 @@ TOOLS = {
     ],
     "Reporting": [
         {
-            "id":          7,
+            "id":          8,
             "name":        "Report Generator",
             "file":        "reporting/report_generator.py",
             "description": "Generate a PDF report from scan findings",
@@ -463,6 +471,63 @@ def launch_firebase():
     p(f"  Type {cyan('use 4')} to audit again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_jwt():
+    p()
+    header("TOOL 5 - JWT ANALYZER")
+    p()
+    p(f"  {dim('Decodes and audits JWT tokens for security vulnerabilities.')}")
+    p(f"  {dim('Finds weak secrets, bad algorithms, missing expiry, and more.')}")
+    p()
+    p(f"  {dim('How to get your JWT token:')}")
+    p(f"  {dim('  1. Log into your app in Chrome')}")
+    p(f"  {dim('  2. Open DevTools (F12) -> Application -> Cookies')}")
+    p(f"  {dim('  3. Copy the auth-token or JWT cookie value')}")
+    p()
+
+    p(f"  {white('Step 1 of 3')} - Paste your JWT token")
+    token = ask("Token >")
+    if not token.strip():
+        p(f"\n  {red('No token entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 3')} - Choose checks")
+    p(f"  {dim('all       = run all checks (recommended)')}")
+    p(f"  {dim('algorithm = check signing algorithm')}")
+    p(f"  {dim('expiry    = check token expiration')}")
+    p(f"  {dim('sensitive = check for sensitive data in payload')}")
+    p(f"  {dim('secret    = try to crack weak HMAC secrets')}")
+    p(f"  {dim('endpoint  = test token against a live endpoint')}")
+    checks = ask("Check type [all] >") or "all"
+
+    p()
+    p(f"  {white('Step 3 of 3')} - Endpoint test {dim('(optional)')}")
+    p(f"  {dim('Enter a protected API URL to test token validation.')}")
+    p(f"  {dim('Press Enter to skip.')}")
+    url = ask("API URL >")
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "web/jwt_analyzer.py", "-t", token.strip(), "--checks"] + checks.split()
+    if url:    cmd += ["-u", url]
+    if output: cmd += ["-o", output]
+
+    p()
+    line()
+    p(f"  {red('Analyzing token...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Analysis complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 5')} to analyze again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -475,6 +540,8 @@ def launch_tool(tool):
         launch_xss()
     elif tool["id"] == 4:
         launch_firebase()
+    elif tool["id"] == 5:
+        launch_jwt()
 
 def find_tool(query):
     q = query.strip().lower()
