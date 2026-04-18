@@ -178,6 +178,16 @@ TOOLS = {
             "status":      "ready",
         },
     ],
+    "Post-Exploit": [
+        {
+            "id":          9,
+            "name":        "Secrets Scanner",
+            "file":        "post_exploit/secrets_scanner.py",
+            "description": "Find exposed API keys, credentials and .env files",
+            "checks":      "GitHub repos, URLs, local paths",
+            "status":      "ready",
+        },
+    ],
 }
 
 ALL_TOOLS = [t for cat in TOOLS.values() for t in cat]
@@ -686,6 +696,84 @@ def launch_report():
     p(f"  Type {cyan('use 8')} to generate another or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_secrets():
+    p()
+    header("TOOL 9 - SECRETS SCANNER")
+    p()
+    p(f"  {dim('Scans for exposed API keys, credentials, .env files and secrets.')}")
+    p(f"  {dim('Works on GitHub repositories, websites and local project folders.')}")
+    p()
+    p(f"  {white('Choose scan mode:')}")
+    p(f"  {dim('1 = GitHub repository  (scans source code for leaked secrets)')}")
+    p(f"  {dim('2 = Website URL        (probes for exposed .env and config files)')}")
+    p(f"  {dim('3 = Local path         (scans your own project folder)')}")
+    p()
+    mode = ask("Mode [1/2/3] >").strip()
+
+    if mode == "1":
+        p()
+        p(f"  {white('GitHub Repository Scan')}")
+        p(f"  {dim('Example: https://github.com/username/repo')}")
+        target = ask("GitHub URL >")
+        if not target.strip():
+            p(f"\n  {red('No URL entered. Going back.')}\n")
+            return
+        p()
+        p(f"  {dim('GitHub token increases rate limit from 60 to 5000 requests/hour.')}")
+        p(f"  {dim('Generate at: github.com/settings/tokens')}")
+        token  = ask("GitHub token (Enter to skip) >")
+        p()
+        output = ask("Save to file? (Enter to skip) >")
+
+        cmd = [sys.executable, "post_exploit/secrets_scanner.py", "-r", target.strip()]
+        if token.strip(): cmd += ["-g", token.strip()]
+        if output.strip(): cmd += ["-o", output.strip()]
+
+    elif mode == "2":
+        p()
+        p(f"  {white('Website URL Scan')}")
+        p(f"  {dim('Probes for .env, config.json, credentials and other sensitive files')}")
+        target = ask("URL >")
+        if not target.strip():
+            p(f"\n  {red('No URL entered. Going back.')}\n")
+            return
+        p()
+        output = ask("Save to file? (Enter to skip) >")
+        cmd = [sys.executable, "post_exploit/secrets_scanner.py", "-u", target.strip()]
+        if output.strip(): cmd += ["-o", output.strip()]
+
+    elif mode == "3":
+        p()
+        p(f"  {white('Local Path Scan')}")
+        p(f"  {dim('Example: ./my-project or C:\\Users\\me\\Desktop\\project')}")
+        target = ask("Local path >")
+        if not target.strip():
+            p(f"\n  {red('No path entered. Going back.')}\n")
+            return
+        p()
+        output = ask("Save to file? (Enter to skip) >")
+        cmd = [sys.executable, "post_exploit/secrets_scanner.py", "-l", target.strip()]
+        if output.strip(): cmd += ["-o", output.strip()]
+
+    else:
+        p(f"  {yellow('Invalid mode. Type 1, 2 or 3.')}\n")
+        return
+
+    p()
+    line()
+    p(f"  {red('Scanning for exposed secrets...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Scan complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 9')} to scan again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -706,6 +794,8 @@ def launch_tool(tool):
         launch_portscan()
     elif tool["id"] == 8:
         launch_report()
+    elif tool["id"] == 9:
+        launch_secrets()
 
 def find_tool(query):
     q = query.strip().lower()
