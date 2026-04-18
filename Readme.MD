@@ -1,10 +1,10 @@
 # STRYKER — Penetration Testing Framework
 
 > A modular, Metasploit-style penetration testing toolkit built in Python.
-> Built by Andrews | For authorized security testing only.
+> Built by Andrews Osei Agyemang | For authorized security testing only.
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Tools](https://img.shields.io/badge/tools-8%20ready-brightgreen)
+![Tools](https://img.shields.io/badge/tools-12%20ready-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-red)
 
@@ -13,18 +13,19 @@
 ## Legal Notice
 
 **This toolkit is for authorized penetration testing ONLY.**
-Only use these tools against systems you own or have explicit written permission to test.
-Unauthorized use is illegal and unethical. See [LEGAL.md](./LEGAL.md) for full details.
+Only use against systems you own or have explicit written permission to test.
+Unauthorized use is illegal. See [LEGAL.md](./LEGAL.md) for full details.
 
 ---
 
 ## Overview
 
-STRYKER is a complete penetration testing framework with an interactive terminal console,
-8 ready-to-use security tools, and a professional PDF report generator.
-It covers the full pentest lifecycle — from recon to exploitation to reporting.
+STRYKER is a complete penetration testing framework with an interactive
+Metasploit-style terminal console and 12 ready-to-use security tools.
+It covers the full pentest lifecycle — recon, scanning, exploitation,
+post-exploitation and professional PDF reporting.
 
-```
+```bash
 python stryker.py
 ```
 
@@ -33,7 +34,6 @@ python stryker.py
        .node.             .node.
       (  o  )           (  o  )
    ____|___|_____________|___|____
-  ...
 
  _____ _____________   ___   __ ___________
 /  ___|_   _| ___ \ \ / / | / /|  ___| ___ \
@@ -55,14 +55,14 @@ stryker@andrews >
 | 1   | `sqli_detector.py`    | SQL injection — error, boolean, time-based      | Ready  |
 | 2   | `nosql_injector.py`   | NoSQL injection — MongoDB, Firebase, CouchDB    | Ready  |
 | 3   | `xss_scanner.py`      | XSS — reflected, DOM, forms, security headers   | Ready  |
-| 4   | `firebase_auditor.py` | Firebase rules — Firestore, RTDB, Storage, Auth | Ready  |
-| 5   | `jwt_analyzer.py`     | JWT tokens — algorithm, expiry, weak secrets    | Ready  |
+| 4   | `firebase_auditor.py` | Firebase — Firestore, RTDB, Storage, Auth rules | Ready  |
+| 5   | `jwt_analyzer.py`     | JWT — algorithm, expiry, weak secrets, endpoint | Ready  |
 
 ### Recon (`/recon`)
 
-| ID  | Tool                | Description                            | Status |
-| --- | ------------------- | -------------------------------------- | ------ |
-| 6   | `subdomain_enum.py` | Subdomain enumeration via DNS + crt.sh | Ready  |
+| ID  | Tool                | Description                                      | Status |
+| --- | ------------------- | ------------------------------------------------ | ------ |
+| 6   | `subdomain_enum.py` | Subdomain discovery via DNS brute-force + crt.sh | Ready  |
 
 ### Scanning (`/scanning`)
 
@@ -75,6 +75,15 @@ stryker@andrews >
 | ID  | Tool                  | Description                      | Status |
 | --- | --------------------- | -------------------------------- | ------ |
 | 8   | `report_generator.py` | Professional PDF pentest reports | Ready  |
+
+### Post-Exploitation (`/post_exploit`)
+
+| ID  | Tool                  | Description                                            | Status |
+| --- | --------------------- | ------------------------------------------------------ | ------ |
+| 9   | `secrets_scanner.py`  | Find exposed API keys, .env files and credentials      | Ready  |
+| 10  | `cors_exploiter.py`   | CORS misconfigurations with JavaScript PoC exploits    | Ready  |
+| 11  | `session_hijacker.py` | Session token and cookie security testing              | Ready  |
+| 12  | `privesc_checker.py`  | Privilege escalation — admin access, IDOR, role bypass | Ready  |
 
 ---
 
@@ -92,7 +101,7 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-### Launch the interactive console
+### Launch the console
 
 ```bash
 python stryker.py
@@ -101,50 +110,29 @@ python stryker.py
 ### Console commands
 
 ```
-modules          List all tools
-use 1            Launch SQLi Detector
-use 2            Launch NoSQL Injector
-use 3            Launch XSS Scanner
-use 4            Launch Firebase Auditor
-use 5            Launch JWT Analyzer
-use 6            Launch Subdomain Enumerator
-use 7            Launch Port Scanner
-use 8            Launch Report Generator
-info <id>        Show details about a tool
+modules          List all 12 tools with status
+use <id>         Launch a tool  (e.g. use 1)
+info <id>        Show tool details
 clear            Clear the screen
 banner           Show the banner
 exit             Exit STRYKER
 ```
 
-### Run tools directly (without console)
+### Run tools directly
 
 ```bash
-# SQL injection scan
 python web/sqli_detector.py -u "https://site.com/page?id=1" --checks all
-
-# NoSQL injection scan
-python web/nosql_injector.py -u "https://site.com/api/users?id=1" --checks all
-
-# XSS scan
+python web/nosql_injector.py -u "https://site.com/api/users?id=1"
 python web/xss_scanner.py -u "https://site.com/search?q=test" --checks all
-
-# Firebase audit
-python web/firebase_auditor.py -p my-firebase-project-id --checks all
-
-# JWT analysis
+python web/firebase_auditor.py -p my-firebase-project-id
 python web/jwt_analyzer.py -t "eyJhbGciOiJSUzI1NiIs..."
-
-# Subdomain enumeration
 python recon/subdomain_enum.py -d example.com --crt
-
-# Port scan
 python scanning/port_scanner.py -t example.com --ports common
-
-# Generate PDF report
-python reporting/report_generator.py -f findings.json -t "Client Name" -o report.pdf
-
-# Generate sample report
-python reporting/report_generator.py --sample -t "Demo Client" -o sample.pdf
+python reporting/report_generator.py -f findings.json -t "Client" -o report.pdf
+python post_exploit/secrets_scanner.py -r https://github.com/user/repo
+python post_exploit/cors_exploiter.py -u https://api.example.com --poc
+python post_exploit/session_hijacker.py -u https://example.com --cookies-only
+python post_exploit/privesc_checker.py -u https://example.com --checks all
 ```
 
 ---
@@ -153,7 +141,7 @@ python reporting/report_generator.py --sample -t "Demo Client" -o sample.pdf
 
 ### 1. SQLi Detector
 
-Detects SQL injection vulnerabilities in URL parameters.
+Detects SQL injection vulnerabilities — error-based, boolean-based blind and time-based blind.
 
 ```bash
 python web/sqli_detector.py -u "https://site.com/page?id=1"
@@ -176,7 +164,7 @@ python web/sqli_detector.py -u "https://site.com/page?id=1" -c "session=abc" -o 
 
 ### 2. NoSQL Injector
 
-Tests for NoSQL injection in MongoDB, Firebase and CouchDB applications.
+Tests MongoDB, Firebase and CouchDB applications for NoSQL injection.
 
 ```bash
 python web/nosql_injector.py -u "https://site.com/api/users?id=1"
@@ -196,12 +184,12 @@ python web/nosql_injector.py -u "https://project.firebaseio.com/users" --checks 
 
 ### 3. XSS Scanner
 
-Detects cross-site scripting vulnerabilities across reflected, DOM, forms and headers.
+Detects cross-site scripting — reflected, DOM-based, form inputs and missing security headers.
 
 ```bash
 python web/xss_scanner.py -u "https://site.com/search?q=test"
 python web/xss_scanner.py -u "https://site.com" --checks dom headers
-python web/xss_scanner.py -u "https://site.com" --checks all -o xss_findings.txt
+python web/xss_scanner.py -u "https://site.com" --checks all -o xss.txt
 ```
 
 | Flag       | Description                                       |
@@ -216,7 +204,7 @@ python web/xss_scanner.py -u "https://site.com" --checks all -o xss_findings.txt
 
 ### 4. Firebase Auditor
 
-Audits Firebase projects for security misconfigurations.
+Audits Firebase projects for security misconfigurations across all services.
 
 ```bash
 python web/firebase_auditor.py -p my-project-id
@@ -247,7 +235,7 @@ python web/jwt_analyzer.py -t "eyJ..." -u https://api.example.com/profile
 | ---------- | -------------------------------------------------------------------- |
 | `-t`       | JWT token                                                            |
 | `--checks` | `algorithm` / `expiry` / `sensitive` / `secret` / `endpoint` / `all` |
-| `-u`       | Endpoint URL to test token against                                   |
+| `-u`       | Endpoint to test token against                                       |
 | `-o`       | Output file                                                          |
 
 ---
@@ -259,23 +247,23 @@ Discovers subdomains using DNS brute-force and certificate transparency logs.
 ```bash
 python recon/subdomain_enum.py -d example.com
 python recon/subdomain_enum.py -d example.com --crt -t 50
-python recon/subdomain_enum.py -d example.com -w custom_wordlist.txt -o subs.txt
+python recon/subdomain_enum.py -d example.com -w wordlist.txt -o subs.txt
 ```
 
-| Flag        | Description                                |
-| ----------- | ------------------------------------------ |
-| `-d`        | Target domain                              |
-| `-t`        | Threads (default: 30)                      |
-| `--crt`     | Query crt.sh certificate transparency logs |
-| `-w`        | Custom wordlist file                       |
-| `--no-http` | Skip HTTP probing (faster)                 |
-| `-o`        | Output file                                |
+| Flag        | Description                   |
+| ----------- | ----------------------------- |
+| `-d`        | Target domain                 |
+| `-t`        | Threads (default: 30)         |
+| `--crt`     | Query crt.sh certificate logs |
+| `-w`        | Custom wordlist               |
+| `--no-http` | Skip HTTP probing (faster)    |
+| `-o`        | Output file                   |
 
 ---
 
 ### 7. Port Scanner
 
-Multi-threaded TCP port scanner with banner grabbing and risk assessment.
+Multi-threaded TCP port scanner with banner grabbing and automatic risk rating.
 
 ```bash
 python scanning/port_scanner.py -t example.com
@@ -284,27 +272,24 @@ python scanning/port_scanner.py -t example.com --ports 80,443,3306,27017
 python scanning/port_scanner.py -t example.com --ports top100 --threads 100
 ```
 
-| Flag           | Description                                                    |
-| -------------- | -------------------------------------------------------------- |
-| `-t`           | Target host or IP                                              |
-| `--ports`      | `common` / `web` / `database` / `dev` / `top100` / custom list |
-| `--threads`    | Threads (default: 50)                                          |
-| `--timeout`    | Connection timeout (default: 1.0s)                             |
-| `--no-banners` | Skip banner grabbing                                           |
-| `-o`           | Output file                                                    |
+| Flag           | Description                                               |
+| -------------- | --------------------------------------------------------- |
+| `-t`           | Target host or IP                                         |
+| `--ports`      | `common` / `web` / `database` / `dev` / `top100` / custom |
+| `--threads`    | Threads (default: 50)                                     |
+| `--timeout`    | Connection timeout (default: 1.0s)                        |
+| `--no-banners` | Skip banner grabbing                                      |
+| `-o`           | Output file                                               |
 
 ---
 
 ### 8. Report Generator
 
 Generates professional PDF pentest reports with cover page, executive summary,
-findings details and remediation table.
+detailed findings and remediation table.
 
 ```bash
-# From findings JSON file
 python reporting/report_generator.py -f findings.json -t "Client Name" -o report.pdf
-
-# Sample report
 python reporting/report_generator.py --sample -t "Demo" -o sample.pdf
 ```
 
@@ -325,21 +310,139 @@ python reporting/report_generator.py --sample -t "Demo" -o sample.pdf
 ]
 ```
 
-Severity levels: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`
+Severity values: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`
+
+---
+
+### 9. Secrets Scanner
+
+Scans GitHub repositories, websites and local folders for exposed secrets.
+Detects 30+ pattern types including Firebase keys, AWS credentials, Stripe keys,
+JWT secrets, private keys and .env file contents.
+
+```bash
+python post_exploit/secrets_scanner.py -r https://github.com/user/repo
+python post_exploit/secrets_scanner.py -r https://github.com/user/repo -g ghp_token
+python post_exploit/secrets_scanner.py -u https://example.com
+python post_exploit/secrets_scanner.py -l ./my-project
+```
+
+| Flag          | Description                              |
+| ------------- | ---------------------------------------- |
+| `-r`          | GitHub repository URL                    |
+| `-u`          | Website URL to probe                     |
+| `-l`          | Local directory or file                  |
+| `-g`          | GitHub personal access token             |
+| `--max-files` | Max files to scan in repo (default: 200) |
+| `-o`          | Output file                              |
+
+---
+
+### 10. CORS Exploiter
+
+Tests for Cross-Origin Resource Sharing misconfigurations and generates
+JavaScript proof-of-concept exploits to demonstrate impact to clients.
+
+```bash
+python post_exploit/cors_exploiter.py -u https://api.example.com
+python post_exploit/cors_exploiter.py -u https://api.example.com --endpoints --poc
+python post_exploit/cors_exploiter.py -u https://api.example.com -c "session=abc"
+```
+
+| Flag          | Description                     |
+| ------------- | ------------------------------- |
+| `-u`          | Target URL                      |
+| `--endpoints` | Also test common API endpoints  |
+| `--poc`       | Generate JavaScript PoC exploit |
+| `-c`          | Cookie                          |
+| `-H`          | Custom header                   |
+| `-o`          | Output file                     |
+
+---
+
+### 11. Session Hijacker Tester
+
+Tests session tokens and cookies for security weaknesses including missing
+flags, token reuse, concurrent sessions and logout invalidation.
+
+```bash
+python post_exploit/session_hijacker.py -u https://example.com --cookies-only
+python post_exploit/session_hijacker.py -u https://example.com -t "eyJhbGci..." --type bearer
+python post_exploit/session_hijacker.py -u https://example.com -t "abc" --type cookie -n "session" --logout /api/logout
+```
+
+| Flag             | Description                    |
+| ---------------- | ------------------------------ |
+| `-u`             | Target URL                     |
+| `-t`             | Session token or JWT           |
+| `--type`         | `cookie` / `bearer` / `header` |
+| `-n`             | Cookie or header name          |
+| `--logout`       | Logout endpoint path           |
+| `--cookies-only` | Only analyze cookie flags      |
+| `-o`             | Output file                    |
+
+---
+
+### 12. Privilege Escalation Checker
+
+Tests for vertical and horizontal privilege escalation — unauthorized admin
+access, IDOR vulnerabilities, role manipulation and header-based bypasses.
+
+```bash
+python post_exploit/privesc_checker.py -u https://example.com
+python post_exploit/privesc_checker.py -u https://example.com -t "eyJhbGci..." --user-id 42
+python post_exploit/privesc_checker.py -u https://example.com -c "session=abc" --user-id 42 --checks admin idor
+```
+
+| Flag        | Description                                   |
+| ----------- | --------------------------------------------- |
+| `-u`        | Target URL                                    |
+| `-t`        | JWT token                                     |
+| `-c`        | Cookie                                        |
+| `--user-id` | Your user ID for IDOR testing                 |
+| `--checks`  | `admin` / `idor` / `roles` / `bypass` / `all` |
+| `-o`        | Output file                                   |
+
+---
+
+## Full Pentest Workflow
+
+```bash
+# 1. Recon
+python recon/subdomain_enum.py -d target.com --crt -o subs.txt
+
+# 2. Port scan discovered subdomains
+python scanning/port_scanner.py -t api.target.com --ports common -o ports.txt
+
+# 3. Web vulnerability scanning
+python web/sqli_detector.py -u "https://target.com/page?id=1" --checks all
+python web/xss_scanner.py -u "https://target.com/search?q=test" --checks all
+python web/nosql_injector.py -u "https://target.com/api/users?id=1"
+
+# 4. Auth & config auditing
+python web/firebase_auditor.py -p project-id --checks all
+python web/jwt_analyzer.py -t "eyJhbGci..."
+
+# 5. Post-exploitation
+python post_exploit/secrets_scanner.py -u https://target.com
+python post_exploit/cors_exploiter.py -u https://target.com --endpoints --poc
+python post_exploit/session_hijacker.py -u https://target.com -t "eyJ..."
+python post_exploit/privesc_checker.py -u https://target.com -t "eyJ..." --user-id 1
+
+# 6. Generate report
+python reporting/report_generator.py -f findings.json -t "Client Name" -o report.pdf
+```
 
 ---
 
 ## Safe Practice Targets
 
-Never test against real systems without written permission. Use these instead:
-
 | Lab                 | URL                                      | Good for               |
 | ------------------- | ---------------------------------------- | ---------------------- |
 | DVWA                | [dvwa.co.uk](https://dvwa.co.uk)         | SQLi, XSS, all basics  |
 | HackTheBox          | [hackthebox.com](https://hackthebox.com) | Real pentest scenarios |
-| TryHackMe           | [tryhackme.com](https://tryhackme.com)   | Guided learning        |
+| TryHackMe           | [tryhackme.com](https://tryhackme.com)   | Guided learning paths  |
 | testphp.vulnweb.com | Acunetix demo                            | Web vulnerabilities    |
-| Your own apps       | localhost / staging                      | Real-world practice    |
 
 ---
 
@@ -347,7 +450,7 @@ Never test against real systems without written permission. Use these instead:
 
 ```
 stryker/
-├── stryker.py              Main console launcher
+├── stryker.py
 ├── requirements.txt
 ├── README.md
 ├── LEGAL.md
@@ -364,21 +467,26 @@ stryker/
 │   └── subdomain_enum.py
 ├── scanning/
 │   └── port_scanner.py
-└── reporting/
-    └── report_generator.py
+├── reporting/
+│   └── report_generator.py
+└── post_exploit/
+    ├── secrets_scanner.py
+    ├── cors_exploiter.py
+    ├── session_hijacker.py
+    └── privesc_checker.py
 ```
 
 ---
 
 ## Contributing
 
-Pull requests are welcome. Please:
+Pull requests welcome. Please:
 
-1. Follow the existing code style
-2. Add a docstring and usage example to every tool
+1. Follow existing code style
+2. Add docstring and usage example to every tool
 3. Test against a legal target before submitting
 4. Never include real target data in examples
-5. Add the tool to the TOOLS registry in `stryker.py`
+5. Add tool to TOOLS registry in `stryker.py`
 
 ---
 
