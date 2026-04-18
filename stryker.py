@@ -528,6 +528,58 @@ def launch_jwt():
     p(f"  Type {cyan('use 5')} to analyze again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_subdomain():
+    p()
+    header("TOOL 6 - SUBDOMAIN ENUMERATOR")
+    p()
+    p(f"  {dim('Discovers subdomains using DNS brute-force and certificate logs.')}")
+    p(f"  {dim('Finds dev, staging, API, admin and other hidden subdomains.')}")
+    p()
+
+    p(f"  {white('Step 1 of 2')} - Enter the target domain")
+    p(f"  {dim('Example: prymebay.com or drewstechconsult.com')}")
+    p(f"  {dim('Do NOT include https:// or www.')}")
+    domain = ask("Domain >")
+    if not domain.strip():
+        p(f"\n  {red('No domain entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 2')} - Options")
+    p(f"  {dim('Threads: how many to run at once (default 30, max 100)')}")
+    threads = ask("Threads [30] >") or "30"
+
+    p()
+    p(f"  {dim('Use certificate transparency logs? (finds more subdomains)')}")
+    use_crt = ask("Query crt.sh? [y/n] >").strip().lower()
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "recon/subdomain_enum.py",
+           "-d", domain.strip(),
+           "-t", threads.strip()]
+
+    if use_crt in ("y", "yes"):
+        cmd.append("--crt")
+    if output:
+        cmd += ["-o", output]
+
+    p()
+    line()
+    p(f"  {red('Target acquired - enumerating subdomains...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Enumeration complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 6')} to scan again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -542,6 +594,8 @@ def launch_tool(tool):
         launch_firebase()
     elif tool["id"] == 5:
         launch_jwt()
+    elif tool["id"] == 6:
+        launch_subdomain()
 
 def find_tool(query):
     q = query.strip().lower()
