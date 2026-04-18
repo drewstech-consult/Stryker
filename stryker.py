@@ -203,6 +203,14 @@ TOOLS = {
             "checks":      "Cookie flags, Token reuse, Logout invalidation",
             "status":      "ready",
         },
+        {
+            "id":          12,
+            "name":        "Privesc Checker",
+            "file":        "post_exploit/privesc_checker.py",
+            "description": "Test for privilege escalation vulnerabilities",
+            "checks":      "Admin access, IDOR, Role manipulation, Bypass",
+            "status":      "ready",
+        },
     ],
 }
 
@@ -917,6 +925,66 @@ def launch_session():
     p(f"  Type {cyan('use 11')} to test again or {cyan('modules')} to see all tools.")
     p()
 
+
+def launch_privesc():
+    p()
+    header("TOOL 12 - PRIVILEGE ESCALATION CHECKER")
+    p()
+    p(f"  {dim('Tests if a normal user can access admin panels or other users data.')}")
+    p()
+    p(f"  {dim('Checks:')}")
+    p(f"  {dim('  admin  = test 30+ admin panel URLs')}")
+    p(f"  {dim('  idor   = test if you can access other users data by changing IDs')}")
+    p(f"  {dim('  roles  = check for role manipulation in JWT or API requests')}")
+    p(f"  {dim('  bypass = test header-based access control bypass')}")
+    p()
+
+    p(f"  {white('Step 1 of 3')} - Target URL")
+    url = ask("URL >")
+    if not url.strip():
+        p(f"\n  {red('No URL entered. Going back.')}\n")
+        return
+
+    p()
+    p(f"  {white('Step 2 of 3')} - Authentication {dim('(optional but recommended)')}")
+    p(f"  {dim('Providing your token tests escalation FROM your current role.')}")
+    token  = ask("JWT token  >")
+    cookie = ask("Cookie     >")
+
+    p()
+    p(f"  {white('Step 3 of 3')} - Your user ID {dim('(for IDOR testing)')}")
+    p(f"  {dim('Find in your JWT payload or profile page. Press Enter to skip.')}")
+    user_id = ask("Your user ID >")
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    cmd = [sys.executable, "post_exploit/privesc_checker.py",
+           "-u", url.strip(), "--checks", "all"]
+
+    if token.strip():
+        cmd += ["-t", token.strip()]
+    if cookie.strip():
+        cmd += ["-c", cookie.strip()]
+    if user_id.strip():
+        cmd += ["--user-id", user_id.strip()]
+    if output.strip():
+        cmd += ["-o", output.strip()]
+
+    p()
+    line()
+    p(f"  {red('Checking for privilege escalation...')}")
+    line()
+    p()
+    subprocess.run(cmd)
+    p()
+    line()
+    p(f"  {green('Check complete.')}")
+    line()
+    p()
+    p(f"  Type {cyan('use 12')} to check again or {cyan('modules')} to see all tools.")
+    p()
+
 def launch_tool(tool):
     if tool["status"] != "ready":
         p(f"\n  {yellow(tool['name'] + ' is not available yet.')}\n")
@@ -943,6 +1011,8 @@ def launch_tool(tool):
         launch_cors()
     elif tool["id"] == 11:
         launch_session()
+    elif tool["id"] == 12:
+        launch_privesc()
 
 def find_tool(query):
     q = query.strip().lower()
