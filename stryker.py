@@ -291,9 +291,15 @@ def show_banner():
     ready = sum(1 for t in ALL_TOOLS if t["status"] == "ready")
     total = len(ALL_TOOLS)
     now   = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Show active workspace
+    try:
+        active_ws = Path(".active_workspace").read_text().strip() if Path(".active_workspace").exists() else "default"
+    except Exception:
+        active_ws = "default"
     p(f"  {dim('Tools ready:')} {green(str(ready) + '/' + str(total))}    "
       f"{dim('Session:')} {CYAN}{now}{RST}    "
       f"{dim('Operator:')} {red(OPERATOR)}")
+    p(f"  {dim('Workspace:')}  {CYAN}{active_ws}{RST}")
     line()
     p()
     p(f"  Type {cyan('help')} to see all commands.")
@@ -313,6 +319,7 @@ def show_help():
         ("history",  "Show scan history from autopilot"),
         ("autopilot", "Launch full automated scan pipeline"),
         ("ai",         "Launch AI-powered findings analysis"),
+        ("workspace",  "Manage client workspaces"),
         ("exit",     "Exit Stryker"),
     ]
     for cmd, desc in cmds:
@@ -1108,6 +1115,7 @@ def main():
         elif action == "history":        show_history()
         elif action == "autopilot":      subprocess.run([sys.executable, "autopilot.py"])
         elif action == "ai":              subprocess.run([sys.executable, "ai_analyst.py"])
+        elif action == "workspace":       subprocess.run([sys.executable, "workspace.py"])
         elif action in ("modules","tools","list"): show_modules()
         elif action == "banner":         show_banner()
         elif action == "clear":          clear()

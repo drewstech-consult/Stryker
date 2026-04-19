@@ -110,6 +110,22 @@ def init_db():
     conn.close()
 
 
+def get_active_workspace():
+    """Get active workspace name."""
+    try:
+        f = Path(".active_workspace")
+        return f.read_text().strip() if f.exists() else "default"
+    except Exception:
+        return "default"
+
+def get_workspace_db():
+    """Get path to active workspace DB."""
+    ws = get_active_workspace()
+    ws_db = Path("workspaces") / ws / "workspace.db"
+    if ws_db.exists():
+        return str(ws_db)
+    return str(DB_PATH)
+
 def save_scan(target):
     conn = sqlite3.connect(DB_PATH)
     c    = conn.cursor()
