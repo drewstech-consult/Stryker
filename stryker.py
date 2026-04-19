@@ -270,6 +270,46 @@ TOOLS = {
 
 ALL_TOOLS = [t for cat in TOOLS.values() for t in cat]
 
+# ── Plugin system ──────────────────────────────────────────────────────────────
+
+def load_plugins():
+    """Auto-discover and load plugins from /plugins directory."""
+    import importlib.util
+    plugins = []
+    plugin_dir = Path("plugins")
+
+    if not plugin_dir.exists():
+        return plugins
+
+    for plugin_file in sorted(plugin_dir.glob("*.py")):
+        if plugin_file.name.startswith("_"):
+            continue
+        try:
+            spec   = importlib.util.spec_from_file_location(plugin_file.stem, plugin_file)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            if hasattr(module, "PLUGIN") and hasattr(module, "run"):
+                meta = module.PLUGIN
+                plugins.append({
+                    "module":      module,
+                    "id":          meta.get("id", plugin_file.stem),
+                    "name":        meta.get("name", plugin_file.stem),
+                    "description": meta.get("description", ""),
+                    "checks":      meta.get("checks", ""),
+                    "author":      meta.get("author", "Unknown"),
+                    "version":     meta.get("version", "1.0"),
+                    "file":        str(plugin_file),
+                })
+        except Exception as e:
+            pass  # Skip broken plugins silently
+
+    return plugins
+
+PLUGINS = load_plugins()
+
+
+
 # ── Display ────────────────────────────────────────────────────────────────────
 
 def clear():
@@ -296,10 +336,11 @@ def show_banner():
         active_ws = Path(".active_workspace").read_text().strip() if Path(".active_workspace").exists() else "default"
     except Exception:
         active_ws = "default"
+    plugin_count = len(PLUGINS)
     p(f"  {dim('Tools ready:')} {green(str(ready) + '/' + str(total))}    "
       f"{dim('Session:')} {CYAN}{now}{RST}    "
-      f"{dim('Operator:')} {red(OPERATOR)}")
-    p(f"  {dim('Workspace:')}  {CYAN}{active_ws}{RST}")
+      f"{dim('Operator:')} {red(OPERATOR)}   {dim('Plugins:')} {CYAN}{plugin_count}{RST}")
+    p(f"  {DIM}'Workspace:'  {active_ws}{RST}")
     line()
     p()
     p(f"  Type {cyan('help')} to see all commands.")
@@ -320,6 +361,7 @@ def show_help():
         ("autopilot", "Launch full automated scan pipeline"),
         ("ai",         "Launch AI-powered findings analysis"),
         ("workspace",  "Manage client workspaces"),
+        ("dashboard",  "Open web dashboard in browser"),
         ("exit",     "Exit Stryker"),
     ]
     for cmd, desc in cmds:
@@ -341,8 +383,19 @@ def show_modules():
             p(f"       {dim(tool['description'])}")
             p(f"       {yellow('Method:')} {dim(tool['checks'])}")
             p()
+    # Show plugins if any exist
+    if PLUGINS:
+        p()
+        p(f"  {red('[ PLUGINS ]')}")
+        p()
+        for plugin in PLUGINS:
+            p(f"    {cyan('p:' + plugin['id']):<30} {green('READY')}")
+            p(f"       {dim(plugin['description'])}")
+            p(f"       {yellow('Author:')} {dim(plugin['author'])}  {yellow('v')}{dim(plugin['version'])}")
+            p()
     line()
     p(f"  {dim('Launch a tool:')} {cyan('use <id>')}   {dim('Example:')} {cyan('use 1')}")
+    p(f"  {dim('Launch a plugin:')} {cyan('use p:<id>')}   {dim('Example:')} {cyan('use p:ssl_checker')}")
     p()
 
 def show_info(tool):
@@ -1078,11 +1131,75 @@ def launch_tool(tool):
     elif tool["id"] == 12:
         launch_privesc()
 
+def launch_plugin(plugin_id):
+    """Launch a plugin by ID."""
+    plugin = next((p for p in PLUGINS if p["id"] == plugin_id), None)
+    if not plugin:
+        p(f"  {red(f'Plugin not found: {plugin_id}')}\n")
+        return
+
+    p()
+    header(f"PLUGIN — {plugin['name'].upper()}")
+    p()
+    p(f"  {dim(plugin['description'])}")
+    p(f"  {dim('Author:')} {plugin['author']}  {dim('Version:')} {plugin['version']}")
+    p()
+
+    p(f"  {white('Step 1 of 2')} - Enter the target URL or domain")
+    target = ask("Target >")
+    if not target.strip():
+        p(f"\n  {red('No target entered. Going back.')}\n")
+        return
+
+    p()
+    output = ask("Save to file? (Enter to skip) >")
+
+    p()
+    line()
+    p(f"  Running {plugin['name']}...")
+    line()
+    p()
+
+    try:
+        findings = plugin["module"].run(
+            target.strip(),
+            output_file=output.strip() or None
+        )
+        p()
+        line()
+        if findings:
+            p(f"  {len(findings)} finding(s) found")
+            p()
+            sev_colors = {"CRITICAL": red, "HIGH": red, "MEDIUM": yellow, "LOW": cyan}
+            for f in findings:
+                sev   = f.get("severity", "INFO")
+                title = f.get("title", "")
+                color = sev_colors.get(sev, dim)
+                if f.get("recommendation"):
+                    p(f"    {green(f.get('recommendation',''))}")
+                p()
+        else:
+            p(f"  {green('No issues found.')}")
+        line()
+    except Exception as e:
+        err(f"Plugin error: {e}")
+
+    p()
+    p(f"  Type {cyan('modules')} to see all tools and plugins.")
+    p()
+
 def find_tool(query):
     q = query.strip().lower()
     for t in ALL_TOOLS:
         if str(t["id"]) == q or q in t["name"].lower():
             return t
+    return None
+
+def find_plugin(query):
+    q = query.strip().lower().replace("p:", "")
+    for plugin in PLUGINS:
+        if plugin["id"] == q or q in plugin["name"].lower():
+            return plugin
     return None
 
 # ── Main loop ──────────────────────────────────────────────────────────────────
@@ -1116,6 +1233,7 @@ def main():
         elif action == "autopilot":      subprocess.run([sys.executable, "autopilot.py"])
         elif action == "ai":              subprocess.run([sys.executable, "ai_analyst.py"])
         elif action == "workspace":       subprocess.run([sys.executable, "workspace.py"])
+        elif action == "dashboard":      subprocess.run([sys.executable, "dashboard.py"])
         elif action in ("modules","tools","list"): show_modules()
         elif action == "banner":         show_banner()
         elif action == "clear":          clear()
@@ -1128,9 +1246,15 @@ def main():
         elif action == "use":
             if not arg: p(f"  {yellow('Usage: use <id>  eg: use 1')}\n")
             else:
-                tool = find_tool(arg)
-                if tool: launch_tool(tool)
-                else:    p(f"  {red('Not found.')} Type {cyan('modules')} to see all.\n")
+                # Check if it's a plugin
+                if arg.startswith("p:") or find_plugin(arg):
+                    plugin = find_plugin(arg)
+                    if plugin: launch_plugin(plugin["id"])
+                    else: p(f"  {red('Plugin not found.')} Type {cyan('modules')} to see all.\n")
+                else:
+                    tool = find_tool(arg)
+                    if tool: launch_tool(tool)
+                    else:    p(f"  {red('Not found.')} Type {cyan('modules')} to see all.\n")
         else:
             p(f"  {dim('Unknown:')} {red(cmd)}{dim('. Type')} {cyan('help')}{dim('.')}\n")
 
