@@ -1,0 +1,3 @@
+# STRYKER CORS Scan — 2026-04-19 05:15:08
+
+[HIGH][Wildcard CORS] https://drewstechconsult.com | origin=https://evil.com

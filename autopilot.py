@@ -16,6 +16,10 @@ import subprocess
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+try:
+    import httpx
+except ImportError:
+    httpx = None
 
 if sys.platform == "win32":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
@@ -189,15 +193,23 @@ def run_tool(cmd, label):
     info(f"Running {label}...")
     start = time.time()
     try:
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
+
         result = subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
-            timeout=300
+            timeout=300,
+            env=env
         )
         elapsed = time.time() - start
         success(f"{label} completed in {elapsed:.1f}s")
-        return result.stdout + result.stderr
+
+        stdout = result.stdout.decode("utf-8", errors="replace") if result.stdout else ""
+        stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
+        return stdout + stderr
+
     except subprocess.TimeoutExpired:
         warn(f"{label} timed out after 300s")
         return ""
@@ -205,6 +217,63 @@ def run_tool(cmd, label):
         err(f"{label} failed: {e}")
         return ""
 
+
+
+def crawl_urls(base_url, max_pages=30):
+    """Crawl a website and find URLs with parameters."""
+    import re
+    from urllib.parse import urljoin, urlparse, parse_qsl
+
+    info(f"Crawling {base_url} for parameterized URLs...")
+
+    visited    = set()
+    to_visit   = [base_url]
+    param_urls = []
+    base_domain = urlparse(base_url).netloc
+
+    try:
+        with httpx.Client(follow_redirects=True, verify=False, timeout=10) as client:
+            while to_visit and len(visited) < max_pages:
+                url = to_visit.pop(0)
+                if url in visited:
+                    continue
+                visited.add(url)
+
+                try:
+                    resp = client.get(url, headers={"User-Agent": "STRYKER-Crawler/1.0"})
+                    if "text/html" not in resp.headers.get("content-type", ""):
+                        continue
+
+                    # Find all links
+                    links = re.findall(r'href=["\'](https?://[^"\'\s>]+|/[^"\'\s>]*)["\'\s>]', resp.text)
+                    for link in links:
+                        full = urljoin(base_url, link)
+                        parsed = urlparse(full)
+
+                        # Only follow same domain
+                        if parsed.netloc != base_domain:
+                            continue
+
+                        # Collect URLs with parameters
+                        if parsed.query and parse_qsl(parsed.query):
+                            clean = full.split("#")[0]
+                            if clean not in param_urls:
+                                param_urls.append(clean)
+                                p(f"  {GREEN}[+]{RST} Found: {CYAN}{clean[:80]}{RST}")
+
+                        # Queue for crawling
+                        clean_link = full.split("#")[0]
+                        if clean_link not in visited and clean_link not in to_visit:
+                            to_visit.append(clean_link)
+
+                except Exception:
+                    pass
+
+    except Exception as e:
+        err(f"Crawler error: {e}")
+
+    success(f"Found {len(param_urls)} URL(s) with parameters across {len(visited)} pages")
+    return param_urls
 
 def stage_recon(target, output_dir, threads):
     """Stage 1 — Subdomain enumeration."""
@@ -264,24 +333,43 @@ def stage_portscan(targets, output_dir, threads):
     return all_open
 
 
-def stage_web_scan(base_url, output_dir, cookie, auth_header):
+def stage_web_scan(base_url, output_dir, cookie, auth_header, param_urls=None):
     """Stage 3 — Web vulnerability scanning."""
     header("STAGE 3 — WEB VULNERABILITY SCAN")
 
-    findings = []
+    findings  = []
     auth_args = []
     if cookie:      auth_args += ["-c", cookie]
     if auth_header: auth_args += ["-H", auth_header]
 
-    # SQLi
+    # Use crawled URLs if available, otherwise just base URL
+    scan_urls = param_urls if param_urls else [base_url]
+    info(f"Scanning {len(scan_urls)} URL(s) for vulnerabilities...")
+
+    # Write URLs to file for multi-URL scanning
+    urls_file = str(output_dir / "crawled_urls.txt")
+    with open(urls_file, "w") as f:
+        for u in scan_urls:
+            f.write(u + "\n")
+
+    # SQLi — scan all crawled URLs
     info("Testing for SQL injection...")
     sqli_out = str(output_dir / "sqli.txt")
-    run_tool([
-        sys.executable, "web/sqli_detector.py",
-        "-u", base_url,
-        "--checks", "error", "boolean",
-        "-o", sqli_out
-    ] + auth_args, "SQLi Detector")
+    if len(scan_urls) > 1:
+        run_tool([
+            sys.executable, "web/sqli_detector.py",
+            "-l", urls_file,
+            "--checks", "error", "boolean",
+            "-t", "5",
+            "-o", sqli_out
+        ] + auth_args, "SQLi Detector")
+    else:
+        run_tool([
+            sys.executable, "web/sqli_detector.py",
+            "-u", base_url,
+            "--checks", "error", "boolean",
+            "-o", sqli_out
+        ] + auth_args, "SQLi Detector")
 
     # NoSQL
     info("Testing for NoSQL injection...")
@@ -293,20 +381,20 @@ def stage_web_scan(base_url, output_dir, cookie, auth_header):
         "-o", nosql_out
     ] + auth_args, "NoSQL Injector")
 
-    # XSS
+    # XSS — scan all crawled URLs
     info("Testing for XSS...")
     xss_out = str(output_dir / "xss.txt")
-    output  = run_tool([
-        sys.executable, "web/xss_scanner.py",
-        "-u", base_url,
-        "--checks", "all",
-        "-o", xss_out
-    ] + auth_args, "XSS Scanner")
-
-    # Parse XSS findings from output
-    for line_text in output.split("\n"):
-        if "Finding" in line_text or "HIGH" in line_text or "CRITICAL" in line_text:
-            findings.append(line_text.strip())
+    for i, url in enumerate(scan_urls[:10]):  # limit to 10 URLs
+        out_i = str(output_dir / f"xss_{i}.txt")
+        output = run_tool([
+            sys.executable, "web/xss_scanner.py",
+            "-u", url,
+            "--checks", "all",
+            "-o", out_i
+        ] + auth_args, f"XSS Scanner ({url[-40:]})")
+        for line_text in output.split("\n"):
+            if "HIGH" in line_text or "CRITICAL" in line_text:
+                findings.append(line_text.strip())
 
     # CORS
     info("Testing CORS configuration...")
@@ -508,32 +596,63 @@ def show_findings(scan_id):
 
 # ── Main autopilot ─────────────────────────────────────────────────────────────
 
-BANNER = [
-    r"   _   _   _ _____ ___  ____  ___ _     ___ _____",
-    r"  / \ | | | |_   _/ _ \|  _ \|_ _| |   / _ \_   _|",
-    r" / _ \| | | | | || | | | |_) || || |  | | | || |",
-    r"/ ___ \ |_| | | || |_| |  __/ | || |__| |_| || |",
-    r"/_/   \_\___/  |_| \___/|_|  |___|_____\___/ |_|",
-    r"          A U T O P I L O T",
+
+SKULL = [
+    "             .                    .",
+    "          .node.              .node.",
+    "         (  o  )            (  o  )",
+    "      ____|___|______________|___|____",
+    "     /   .-'                  `-.    \\",
+    "    /  .'   __    ___    __    `.    \\",
+    "   |  /    /  \\  /   \\  /  \\   \\   |",
+    "   | |    | () || ( ) || () |   |  |",
+    "   | |     \\__/  \\___/  \\__/    |  |",
+    "   |  \\      ___________         /  |",
+    "    \\  `.   /    | |    \\     .'   /",
+    "     \\   `-'  ___| |___  `-'`    /",
+    "      \\      /___________\\      /",
+    "       `----'               `----'",
 ]
 
+AUTOPILOT_ART = [
+    r"  ___  _   _ _____ ___________ _____ _     _____ _____ ",
+    r" / _ \| | | |_   _|  _  | ___ \_   _| |   |  _  |_   _|",
+    r"/ /_\ \ | | | | | | | | | |_/ / | | | |   | | | | | |  ",
+    r"|  _  | | | | | | | | | |  __/  | | | |   | | | | | |  ",
+    r"| | | | |_| | | | \ \_/ / |    _| |_| |___\ \_/ / | |  ",
+    r"\_| |_/\___/  \_/  \___/\_|    \___/\_____/\___/  \_/  ",
+]
 
 def show_banner():
     os.system("cls" if os.name == "nt" else "clear")
+    for skull_line in SKULL:
+        p(f"{RED}{skull_line}{RST}")
+        time.sleep(0.02)
     p()
-    for line_text in BANNER:
-        p(f"{BOLD}{RED}{line_text}{RST}")
+    for art_line in AUTOPILOT_ART:
+        p(f"{BOLD}{RED}{art_line}{RST}")
         time.sleep(0.03)
     p()
-    p(f"{DIM}  Full automated penetration testing pipeline  |  by Andrews{RST}")
+    p(f"{DIM}  Full Automated Penetration Testing Pipeline  |  by Andrews  |  v1.0.0{RST}")
     p()
     line()
-    p(f"  {DIM}Commands:{RST}  "
-      f"{CYAN}scan{RST}  "
-      f"{CYAN}history{RST}  "
-      f"{CYAN}findings <id>{RST}  "
-      f"{CYAN}exit{RST}")
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c    = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM scans")
+        total_scans = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM findings")
+        total_findings = c.fetchone()[0]
+        conn.close()
+    except Exception:
+        total_scans = total_findings = 0
+    now = datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
+    p(f"  {DIM}Scans run:{RST} {GREEN}{total_scans}{RST}   "
+      f"{DIM}Findings:{RST} {RED}{total_findings}{RST}   "
+      f"{DIM}Session:{RST}  {CYAN}{now}{RST}")
     line()
+    p()
+    p(f"  {DIM}Commands:{RST}  {CYAN}scan{RST}  {CYAN}history{RST}  {CYAN}findings <id>{RST}  {CYAN}exit{RST}")
     p()
 
 
@@ -624,7 +743,14 @@ def run_autopilot():
             scan_targets = [domain] + subdomains[:4]
             stage_portscan(scan_targets, output_dir, threads)
 
-            stage_web_scan(target, output_dir, cookie, auth_header)
+            # Crawl for parameterized URLs before web scanning
+            header("STAGE 2.5 — URL CRAWLER")
+            param_urls = crawl_urls(target, max_pages=30) if httpx else []
+            if not param_urls:
+                warn("No parameterized URLs found — scanning homepage only")
+                param_urls = [target]
+
+            stage_web_scan(target, output_dir, cookie, auth_header, param_urls)
             stage_secrets(target, output_dir)
 
             if firebase_id:

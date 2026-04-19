@@ -312,6 +312,7 @@ def show_help():
         ("banner",   "Show the banner again"),
         ("history",  "Show scan history from autopilot"),
         ("autopilot", "Launch full automated scan pipeline"),
+        ("ai",         "Launch AI-powered findings analysis"),
         ("exit",     "Exit Stryker"),
     ]
     for cmd, desc in cmds:
@@ -1104,6 +1105,9 @@ def main():
             p()
             break
         elif action == "help":           show_help()
+        elif action == "history":        show_history()
+        elif action == "autopilot":      subprocess.run([sys.executable, "autopilot.py"])
+        elif action == "ai":              subprocess.run([sys.executable, "ai_analyst.py"])
         elif action in ("modules","tools","list"): show_modules()
         elif action == "banner":         show_banner()
         elif action == "clear":          clear()

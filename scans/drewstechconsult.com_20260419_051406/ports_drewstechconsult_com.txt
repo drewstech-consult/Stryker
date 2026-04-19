@@ -1,0 +1,8 @@
+# STRYKER Port Scan — drewstechconsult.com (216.198.79.193)
+# Date: 2026-04-19 05:14:12
+# Open ports: 4
+
+21/FTP [open] 
+80/HTTP [open] HTTP/1.0 308 Permanent Redirect
+443/HTTPS [open] 
+587/SMTP/TLS [open] 

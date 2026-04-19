@@ -1,0 +1,12 @@
+[
+  {
+    "severity": "HIGH",
+    "title": "[HIGH][Wildcard CORS] https://drewstechconsult.com | origin=https://evil.com",
+    "tool": "CORS Exploiter",
+    "target": "",
+    "description": "[HIGH][Wildcard CORS] https://drewstechconsult.com | origin=https://evil.com",
+    "payload": "",
+    "evidence": "Found by CORS Exploiter",
+    "recommendation": "Review and remediate this finding."
+  }
+]
