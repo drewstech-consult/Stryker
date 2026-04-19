@@ -9,6 +9,8 @@ import sys
 import io
 import time
 import subprocess
+import sqlite3
+from pathlib import Path
 from datetime import datetime
 
 
@@ -63,6 +65,58 @@ def green(t):  return f"{BOLD}{GREEN}{t}{RST}"
 def yellow(t): return f"{YELLOW}{t}{RST}"
 def dim(t):    return f"{DIM}{t}{RST}"
 def white(t):  return f"{WHITE}{t}{RST}"
+
+
+# ── Database ───────────────────────────────────────────────────────────────────
+
+DB_PATH = Path("stryker_data.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c    = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS scans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            target TEXT, started_at TEXT,
+            finished_at TEXT, status TEXT, findings INTEGER DEFAULT 0
+        )""")
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS findings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            scan_id INTEGER, tool TEXT, severity TEXT,
+            title TEXT, target TEXT, detail TEXT, created_at TEXT
+        )""")
+    conn.commit()
+    conn.close()
+
+def get_history(limit=10):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c    = conn.cursor()
+        c.execute("SELECT id, target, started_at, status, findings FROM scans ORDER BY id DESC LIMIT ?", (limit,))
+        rows = c.fetchall()
+        conn.close()
+        return rows
+    except Exception:
+        return []
+
+def show_history():
+    rows = get_history(15)
+    p()
+    header("SCAN HISTORY")
+    if not rows:
+        p(f"  {dim('No scans yet. Run autopilot.py or use the tools to start scanning.')}")
+        p()
+        return
+    p(f"  {cyan('ID'):<8} {white('Target'):<35} {dim('Date'):<20} {'Status':<12} {'Findings'}")
+    p(f"  {'─'*6}   {'─'*33}   {'─'*18}   {'─'*10}   {'─'*8}")
+    for row in rows:
+        scan_id, target, started, status, findings = row
+        date = started[:16].replace("T", " ") if started else "—"
+        status_c = green(status) if status == "complete" else yellow(status)
+        findings_c = red(str(findings)) if findings > 0 else green("0")
+        p(f"  {cyan(str(scan_id)):<8} {target:<35} {dim(date):<20} {status_c:<12} {findings_c}")
+    p()
 
 def ask(label):
     sys.stdout.write(f"  {CYAN}{label}{RST} ")
@@ -256,6 +310,8 @@ def show_help():
         ("info 1",   "Show details about a tool"),
         ("clear",    "Clear the screen"),
         ("banner",   "Show the banner again"),
+        ("history",  "Show scan history from autopilot"),
+        ("autopilot", "Launch full automated scan pipeline"),
         ("exit",     "Exit Stryker"),
     ]
     for cmd, desc in cmds:
